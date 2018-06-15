@@ -5,7 +5,7 @@ motion_head: &id001
    labelref  : [0]
    dataart   : ["t1_tse_tra_Kopf_Motion_0003"]
    labelart  : [1]
-   pathout   : "/med_data/ImageSimilarity/Databases/MRPhysics/CNN/Headcross"
+   pathout   : "/no_backup/s1254/CNN/Headcross"
    bestmodel : {CNN2D: "head_4040_lr_0.0001_bs_64", CNN3D: "xxx", MNetArt: "xxx", VNetArt: "xxx"}
 #
 motion_abd: &id002
@@ -73,8 +73,8 @@ network : "motion_all_CNN2D"
 # scaling range
 range : [0, 1]
 # patches
-patchSize : [40, 40] # [x, y] or [x,y,z], but z should not larger than 10, else too much zero-padding when scaling factor is small
-patchOverlap : 0.5 # 50%
+patchSize : [80, 80] # [x, y] or [x,y,z], but z should not larger than 10, else too much zero-padding when scaling factor is small
+patchOverlap : 0.8 # 80%
 # sLabeling strategy
 # 'volume': volume-wise labeling
 # 'patch': patch-wise labeling
@@ -100,7 +100,7 @@ lr : [0.1, 0.01, 0.05, 0.005, 0.001]
 # amount of epochs
 epochs : 300
 # perform training (true) or prediction (false)
-lTrain : true
+lTrain : false
 # save intermediate results
 lSave : true
 # (list of) path(s) of to be predicted images
@@ -124,7 +124,7 @@ lScaleFactor : [0.5, 1]
 # lCorrection
 # true: artifact correction
 # false: classification
-lCorrection: false
+lCorrection: true
 # parameters in artifacts correction
 correction:
   # training model
