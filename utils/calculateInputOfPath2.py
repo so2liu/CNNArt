@@ -5,7 +5,7 @@ Created on Wed Feb 14 16:38:33 2018
 @author: cyf
 """
 import numpy as np
-from networks.multiscale.MSnetworks import fgetKernels, fgetStrides, fgetLayerNum
+#from networks.multiscale.MSnetworks import fgetKernels, fgetStrides, fgetLayerNum
 
 
 def fcalculateInputOfPath2(patchSize, scaleFactor, sModelIn):

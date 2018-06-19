@@ -1,6 +1,6 @@
 # demo file
 import os
-#os.environ["CUDA_VISIBLE_DEVICES"]="0,1,2,3"
+os.environ["CUDA_VISIBLE_DEVICES"]="0,1,2,3"
 import glob
 import yaml
 import numpy as np
@@ -13,7 +13,7 @@ import cnn_main
 import utils.scaling as scaling
 import correction.main_correction as correction
 from utils.calculateInputOfPath2 import fcalculateInputOfPath2
-from networks.multiscale.runMS import frunCNN_MS
+#from networks.multiscale.runMS import frunCNN_MS
 
 
 with open('config' + os.sep + 'param.yml', 'r') as ymlfile:
