@@ -32,6 +32,71 @@ def compute_mse_loss(dHyper, x_ref, decoded_ref2ref, decoded_art2ref):
 
     return loss_ref2ref, loss_art2ref
 
+def compute_abs_loss(dHyper, x_ref, decoded_ref2ref, decoded_art2ref):
+    loss_ref2ref = Lambda(lambda x: K.mean(K.sum(K.abs(x[0] - x[1]), [1, 2, 3])), output_shape=(None,)) \
+                       ([Lambda(lambda x: dHyper['nScale'] * x, output_shape=x_ref._keras_shape)(x_ref),
+                             Lambda(lambda x: dHyper['nScale'] * x, output_shape=decoded_ref2ref._keras_shape)(decoded_ref2ref)])
+
+    loss_art2ref = Lambda(lambda x: K.mean(K.sum(K.abs(x[0] - x[1]), [1, 2, 3])), output_shape=(None,))\
+                       ([Lambda(lambda x: dHyper['nScale'] * x, output_shape=x_ref._keras_shape)(x_ref),
+                         Lambda(lambda x: dHyper['nScale'] * x, output_shape=decoded_art2ref._keras_shape)(decoded_art2ref)])
+
+    return loss_ref2ref, loss_art2ref
+
+def compute_MSSIM_loss(dHyper, x_ref, decoded_ref2ref, decoded_art2ref):
+
+    sigma = 1.5
+
+    # initialize the gaussian filter based on the bottom size
+    width = 5
+    num = int(80 / width)
+    w = np.exp(-1. * np.arange(-int(width / 2), int(width / 2) + 1) ** 2 / (2 * sigma ** 2))
+    w = np.outer(w, np.reshape(w, (width, 1)))  # extend to 2D
+    w = w / np.sum(w)  # normailization
+    w = np.reshape(w, (1, 1, width, width))  # reshape to 4D
+    w = np.tile(w, (1, 1, num, num))
+
+    w = K.variable(value=w)
+
+    mu_x = Lambda(lambda x: K.sum(w * x, axis=(1,2,3), keepdims=True))\
+        (Lambda(lambda x: dHyper['nScale'] * x, output_shape=decoded_ref2ref._keras_shape)(x_ref))
+
+    mu_y_art2ref = Lambda(lambda x: K.sum(w * x, axis=(1,2,3), keepdims=True)) \
+        (Lambda(lambda x: dHyper['nScale'] * x, output_shape=decoded_ref2ref._keras_shape)(decoded_art2ref))
+
+    mu_y_ref2ref = Lambda(lambda x: K.sum(w * x, axis=(1, 2, 3), keepdims=True)) \
+        (Lambda(lambda x: dHyper['nScale'] * x, output_shape=decoded_ref2ref._keras_shape)(decoded_ref2ref))
+
+    sigma_x2 = Lambda(lambda x: K.sum(w * K.square(x), axis=(1,2,3), keepdims=True) - K.square(mu_x))\
+        (Lambda(lambda x: dHyper['nScale'] * x, output_shape=decoded_ref2ref._keras_shape)(x_ref))
+
+    sigma_y2_art2ref = Lambda(lambda x: K.sum(w * K.square(x), axis=(1,2,3), keepdims=True) - K.square(mu_x)) \
+        (Lambda(lambda x: dHyper['nScale'] * x, output_shape=decoded_ref2ref._keras_shape)(decoded_art2ref))
+
+    sigma_y2_ref2ref = Lambda(lambda x: K.sum(w * K.square(x), axis=(1, 2, 3), keepdims=True) - K.square(mu_x)) \
+        (Lambda(lambda x: dHyper['nScale'] * x, output_shape=decoded_ref2ref._keras_shape)(decoded_ref2ref))
+
+    sigma_xy_art2ref = Lambda(lambda x: K.sum(w * x[0] * x[1], axis=(1,2,3), keepdims=True) - mu_x * mu_y_art2ref) \
+        ([Lambda(lambda x: dHyper['nScale'] * x, output_shape=decoded_ref2ref._keras_shape)(x_ref),
+          Lambda(lambda x: dHyper['nScale'] * x, output_shape=decoded_ref2ref._keras_shape)(decoded_art2ref)])
+
+    sigma_xy_ref2ref = Lambda(lambda x: K.sum(w * x[0] * x[1], axis=(1, 2, 3), keepdims=True) - mu_x * mu_y_ref2ref) \
+        ([Lambda(lambda x: dHyper['nScale'] * x, output_shape=decoded_ref2ref._keras_shape)(x_ref),
+          Lambda(lambda x: dHyper['nScale'] * x, output_shape=decoded_ref2ref._keras_shape)(decoded_ref2ref)])
+
+    C1 = (255 * 0.01) ** 2
+    C2 = (255 * 0.03) ** 2
+
+    l_art2ref = (2 * mu_x * mu_y_art2ref + C1)/(K.square(mu_x) + K.square(mu_y_art2ref)  + C1)
+    cs_art2ref = (2 * sigma_xy_art2ref + C2)/(sigma_x2 + sigma_y2_art2ref + C2)
+
+    l_ref2ref = (2 * mu_x * mu_y_ref2ref + C1) / (K.square(mu_x) + K.square(mu_y_ref2ref) + C1)
+    cs_ref2ref = (2 * sigma_xy_ref2ref + C2) / (sigma_x2 + sigma_y2_ref2ref + C2)
+
+    loss_ref2ref = 1 - K.sum(l_ref2ref * cs_ref2ref) / (num*num)
+    loss_art2ref = 1 - K.sum(l_art2ref * cs_art2ref) / (num*num)
+
+    return loss_ref2ref, loss_art2ref
 
 def compute_charbonnier_loss(dHyper, x_ref, decoded_ref2ref, decoded_art2ref):
     epsilon = 0.1

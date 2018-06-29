@@ -34,28 +34,38 @@ class CustomLossLayer(Layer):
         z_mean = inputs[4]
 
         # compute KL loss
-        loss_kl = - 0.5 * K.sum(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=-1)
-        self.add_loss(self.dHyper['kl_weight']*K.mean(loss_kl))
+#        loss_kl = - 0.5 * K.sum(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=-1)
+#        self.add_loss(self.dHyper['kl_weight']*K.mean(loss_kl))
 
         # compute MSE loss
-        mse_loss_ref2ref, mse_loss_art2ref = compute_mse_loss(self.dHyper, x_ref, decoded_ref2ref, decoded_art2ref)
-        self.add_loss(self.dHyper['mse_weight'] * (self.dHyper['loss_ref2ref']*mse_loss_ref2ref + self.dHyper['loss_art2ref']*mse_loss_art2ref))
+#        mse_loss_ref2ref, mse_loss_art2ref = compute_mse_loss(self.dHyper, x_ref, decoded_ref2ref, decoded_art2ref)
+#        self.add_loss(self.dHyper['mse_weight'] * (self.dHyper['loss_ref2ref']*mse_loss_ref2ref + self.dHyper['loss_art2ref']*mse_loss_art2ref))
+
+        # compute L1 loss
+#        abs_loss_ref2ref, abs_loss_art2ref = compute_abs_loss(self.dHyper, x_ref, decoded_ref2ref, decoded_art2ref)
+#        self.add_loss(self.dHyper['abs_weight'] * (
+#        self.dHyper['loss_ref2ref'] * abs_loss_ref2ref + self.dHyper['loss_art2ref'] * abs_loss_art2ref))
+
+        # compute MSSIM loss
+        MSSIM_loss_ref2ref, MSSIM_loss_art2ref = compute_MSSIM_loss(self.dHyper, x_ref, decoded_ref2ref, decoded_art2ref)
+        self.add_loss(self.dHyper['MSSIM_weight'] * (
+        self.dHyper['loss_ref2ref'] * MSSIM_loss_ref2ref + self.dHyper['loss_art2ref'] * MSSIM_loss_art2ref))
 
         # compute charbonnier loss
-        charbonnier_loss_ref2ref, charbonnier_loss_art2ref = compute_charbonnier_loss(self.dHyper, x_ref, decoded_ref2ref, decoded_art2ref)
-        self.add_loss(self.dHyper['charbonnier_weight'] * (self.dHyper['loss_ref2ref']*charbonnier_loss_ref2ref + self.dHyper['loss_art2ref']*charbonnier_loss_art2ref))
+#        charbonnier_loss_ref2ref, charbonnier_loss_art2ref = compute_charbonnier_loss(self.dHyper, x_ref, decoded_ref2ref, decoded_art2ref)
+#        self.add_loss(self.dHyper['charbonnier_weight'] * (self.dHyper['loss_ref2ref']*charbonnier_loss_ref2ref + self.dHyper['loss_art2ref']*charbonnier_loss_art2ref))
 
         # compute gradient entropy
-        ge_ref2ref, ge_art2ref = compute_gradient_entropy(self.dHyper, decoded_ref2ref, decoded_art2ref, self.patchSize)
-        self.add_loss(self.dHyper['ge_weight'] * (self.dHyper['loss_ref2ref']*ge_ref2ref + self.dHyper['loss_art2ref']*ge_art2ref))
+#        ge_ref2ref, ge_art2ref = compute_gradient_entropy(self.dHyper, decoded_ref2ref, decoded_art2ref, self.patchSize)
+#        self.add_loss(self.dHyper['ge_weight'] * (self.dHyper['loss_ref2ref']*ge_ref2ref + self.dHyper['loss_art2ref']*ge_art2ref))
 
         # compute TV loss
-        tv_ref2ref, tv_art2ref = compute_tv_loss(self.dHyper, decoded_ref2ref, decoded_art2ref, self.patchSize)
-        self.add_loss(self.dHyper['tv_weight'] * (self.dHyper['loss_ref2ref']*tv_ref2ref + self.dHyper['loss_art2ref']*tv_art2ref))
+#        tv_ref2ref, tv_art2ref = compute_tv_loss(self.dHyper, decoded_ref2ref, decoded_art2ref, self.patchSize)
+#        self.add_loss(self.dHyper['tv_weight'] * (self.dHyper['loss_ref2ref']*tv_ref2ref + self.dHyper['loss_art2ref']*tv_art2ref))
 
         # compute perceptual loss
-        perceptual_loss_ref2ref, perceptual_loss_art2ref = compute_perceptual_loss(x_ref, decoded_ref2ref, decoded_art2ref, self.patchSize, self.dHyper['pl_network'],self.dHyper['loss_model'])
-        self.add_loss(self.dHyper['perceptual_weight'] * (self.dHyper['loss_ref2ref'] * perceptual_loss_ref2ref + self.dHyper['loss_art2ref'] * perceptual_loss_art2ref))
+#        perceptual_loss_ref2ref, perceptual_loss_art2ref = compute_perceptual_loss(x_ref, decoded_ref2ref, decoded_art2ref, self.patchSize, self.dHyper['pl_network'],self.dHyper['loss_model'])
+#        self.add_loss(self.dHyper['perceptual_weight'] * (self.dHyper['loss_ref2ref'] * perceptual_loss_ref2ref + self.dHyper['loss_art2ref'] * perceptual_loss_art2ref))
 
         return [decoded_ref2ref, decoded_art2ref]
 
