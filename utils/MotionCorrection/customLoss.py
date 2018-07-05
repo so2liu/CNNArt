@@ -44,35 +44,33 @@ def compute_abs_loss(dHyper, x_ref, decoded_ref2ref, decoded_art2ref):
 
 def compute_MSSIM_loss(dHyper, x_ref, decoded_ref2ref, decoded_art2ref):
 
-    mu_x = Lambda(lambda x: K.mean(x, axis=(1,2,3)), output_shape=(None,))(x_ref)
-
-    mu_y_art2ref = Lambda(lambda x: K.mean(x, axis=(1,2,3)), output_shape=(None,))(decoded_art2ref)
-
-    mu_y_ref2ref = Lambda(lambda x: K.mean(x, axis=(1, 2, 3)), output_shape=(None,))(decoded_ref2ref)
-
-    sigma_x2 = Lambda(lambda x: K.mean(K.square(x), axis=(1,2,3)) - K.square(mu_x), output_shape=(None,))(x_ref)
-
-    sigma_y2_art2ref = Lambda(lambda x: K.mean(K.square(x), axis=(1,2,3)) - K.square(mu_x), output_shape=(None,))(decoded_art2ref)
-
-    sigma_y2_ref2ref = Lambda(lambda x: K.mean(K.square(x), axis=(1, 2, 3)) - K.square(mu_x), output_shape=(None,))(decoded_ref2ref)
-
-    sigma_xy_art2ref = Lambda(lambda x: K.mean(x[0] * x[1], axis=(1,2,3)) - mu_x * mu_y_art2ref, output_shape=(None,)) \
-        ([(x_ref), (decoded_art2ref)])
-
-    sigma_xy_ref2ref = Lambda(lambda x: K.mean(x[0] * x[1], axis=(1, 2, 3)) - mu_x * mu_y_ref2ref, output_shape=(None,)) \
-        ([(x_ref), (decoded_ref2ref)])
-
     C1 = (255 * 0.01) ** 2
     C2 = (255 * 0.03) ** 2
 
-    l_art2ref = (2 * mu_x * mu_y_art2ref + C1)/(K.square(mu_x) + K.square(mu_y_art2ref)  + C1)
-    cs_art2ref = (2 * sigma_xy_art2ref + C2)/(sigma_x2 + sigma_y2_art2ref + C2)
+    mu_x = Lambda(lambda x: K.mean(x, axis=(1, 2, 3)), output_shape=(None,))(x_ref)
+    sigma_x2 = Lambda(lambda x: K.mean(K.square(x), axis=(1,2,3)) - K.square(mu_x), output_shape=(None,))(x_ref)
 
-    l_ref2ref = (2 * mu_x * mu_y_ref2ref + C1) / (K.square(mu_x) + K.square(mu_y_ref2ref) + C1)
-    cs_ref2ref = (2 * sigma_xy_ref2ref + C2) / (sigma_x2 + sigma_y2_ref2ref + C2)
+    # art2ref
+    mu_y = Lambda(lambda x: K.mean(x, axis=(1,2,3)), output_shape=(None,))(decoded_art2ref)
+    sigma_y2 = Lambda(lambda x: K.mean(K.square(x), axis=(1, 2, 3)) - K.square(mu_x), output_shape=(None,))(decoded_art2ref)
+    sigma_xy = Lambda(lambda x: K.mean(x[0] * x[1], axis=(1, 2, 3)) - mu_x * mu_y, output_shape=(None,)) \
+        ([(x_ref), (decoded_art2ref)])
 
-    loss_ref2ref = 1 - K.mean(l_ref2ref * cs_ref2ref)
-    loss_art2ref = 1 - K.mean(l_art2ref * cs_art2ref)
+    l = (2 * mu_x * mu_y + C1)/(K.square(mu_x) + K.square(mu_y)  + C1)
+    cs = (2 * sigma_xy + C2) / (sigma_x2 + sigma_y2 + C2)
+
+    loss_art2ref = 1 - K.mean(l * cs)
+
+    # ref2ref
+    mu_y = Lambda(lambda x: K.mean(x, axis=(1, 2, 3)), output_shape=(None,))(decoded_ref2ref)
+    sigma_y2 = Lambda(lambda x: K.mean(K.square(x), axis=(1, 2, 3)) - K.square(mu_x), output_shape=(None,))(decoded_ref2ref)
+    sigma_xy = Lambda(lambda x: K.mean(x[0] * x[1], axis=(1, 2, 3)) - mu_x * mu_y, output_shape=(None,)) \
+        ([(x_ref), (decoded_ref2ref)])
+
+    l = (2 * mu_x * mu_y + C1) / (K.square(mu_x) + K.square(mu_y) + C1)
+    cs = (2 * sigma_xy + C2) / (sigma_x2 + sigma_y2 + C2)
+
+    loss_ref2ref = 1 - K.mean(l * cs)
 
     return loss_ref2ref, loss_art2ref
 
