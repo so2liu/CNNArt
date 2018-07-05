@@ -34,31 +34,15 @@ def compute_mse_loss(dHyper, x_ref, decoded_ref2ref, decoded_art2ref):
 
 def compute_abs_loss(dHyper, x_ref, decoded_ref2ref, decoded_art2ref):
     loss_ref2ref = Lambda(lambda x: K.mean(K.sum(K.abs(x[0] - x[1]), [1, 2, 3])), output_shape=(None,)) \
-                       ([Lambda(lambda x: dHyper['nScale'] * x, output_shape=x_ref._keras_shape)(x_ref),
-                             Lambda(lambda x: dHyper['nScale'] * x, output_shape=decoded_ref2ref._keras_shape)(decoded_ref2ref)])
+                       ([(x_ref), (decoded_ref2ref)])
 
     loss_art2ref = Lambda(lambda x: K.mean(K.sum(K.abs(x[0] - x[1]), [1, 2, 3])), output_shape=(None,))\
-                       ([Lambda(lambda x: dHyper['nScale'] * x, output_shape=x_ref._keras_shape)(x_ref),
-                         Lambda(lambda x: dHyper['nScale'] * x, output_shape=decoded_art2ref._keras_shape)(decoded_art2ref)])
+                       ([(x_ref), (decoded_art2ref)])
 
     return loss_ref2ref, loss_art2ref
 
+
 def compute_MSSIM_loss(dHyper, x_ref, decoded_ref2ref, decoded_art2ref):
-
-#    sigma = 1.5
-
-    # initialize the gaussian filter based on the bottom size
-#    width = 5
-#    num = int(dHyper['patchSize'][0] / width)
-
-#    w = np.exp(-1. * np.arange(-int(width / 2), int(width / 2) + 1) ** 2 / (2 * sigma ** 2))
-#    w = np.outer(w, np.reshape(w, (width, 1)))  # extend to 2D
-
-#    w = np.reshape(w, (1, 1, width, width))  # reshape to 4D
-#    w = np.tile(w, (1, 1, num, num))
-#    w = w / np.sum(w)  # normailization
-
-#    w = K.variable(value=w)
 
     mu_x = Lambda(lambda x: K.mean(x, axis=(1,2,3)), output_shape=(None,))(x_ref)
 
@@ -92,7 +76,7 @@ def compute_MSSIM_loss(dHyper, x_ref, decoded_ref2ref, decoded_art2ref):
 
     return loss_ref2ref, loss_art2ref
 
-#def compute_MSSIM_loss(dHyper, x_ref, decoded_ref2ref, decoded_art2ref):
+#def compute_MS_SSIM_loss(dHyper, x_ref, decoded_ref2ref, decoded_art2ref):
 
 def compute_charbonnier_loss(dHyper, x_ref, decoded_ref2ref, decoded_art2ref):
     epsilon = 0.1
