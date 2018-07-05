@@ -41,40 +41,82 @@ def compute_abs_loss(dHyper, x_ref, decoded_ref2ref, decoded_art2ref):
 
     return loss_ref2ref, loss_art2ref
 
-
 def compute_MSSIM_loss(dHyper, x_ref, decoded_ref2ref, decoded_art2ref):
 
     C1 = (255 * 0.01) ** 2
     C2 = (255 * 0.03) ** 2
 
     mu_x = Lambda(lambda x: K.mean(x, axis=(1, 2, 3)), output_shape=(None,))(x_ref)
-    sigma_x2 = Lambda(lambda x: K.mean(K.square(x), axis=(1,2,3)) - K.square(mu_x), output_shape=(None,))(x_ref)
+    sigma_x2 = Lambda(lambda x: K.var(x, axis=(1,2,3)), output_shape=(None,))(x_ref)
 
-    # art2ref
+    #art2ref
     mu_y = Lambda(lambda x: K.mean(x, axis=(1,2,3)), output_shape=(None,))(decoded_art2ref)
-    sigma_y2 = Lambda(lambda x: K.mean(K.square(x), axis=(1, 2, 3)) - K.square(mu_x), output_shape=(None,))(decoded_art2ref)
+    sigma_y2 = Lambda(lambda x: K.var(x, axis=(1,2,3)), output_shape=(None,))(decoded_art2ref)
     sigma_xy = Lambda(lambda x: K.mean(x[0] * x[1], axis=(1, 2, 3)) - mu_x * mu_y, output_shape=(None,)) \
         ([(x_ref), (decoded_art2ref)])
 
-    l = (2 * mu_x * mu_y + C1)/(K.square(mu_x) + K.square(mu_y)  + C1)
-    cs = (2 * sigma_xy + C2) / (sigma_x2 + sigma_y2 + C2)
+    l_cs = (2 * mu_x * mu_y + C1)/(K.square(mu_x) + K.square(mu_y)  + C1) * (2 * sigma_xy + C2) / (sigma_x2 + sigma_y2 + C2)
 
-    loss_art2ref = 1 - K.mean(l * cs)
+    loss_art2ref = K.mean(1 - l_cs) / 2
 
-    # ref2ref
+    #ref2ref
     mu_y = Lambda(lambda x: K.mean(x, axis=(1, 2, 3)), output_shape=(None,))(decoded_ref2ref)
-    sigma_y2 = Lambda(lambda x: K.mean(K.square(x), axis=(1, 2, 3)) - K.square(mu_x), output_shape=(None,))(decoded_ref2ref)
+    sigma_y2 = Lambda(lambda x: K.var(x,axis=(1,2,3)), output_shape=(None,))(decoded_ref2ref)
     sigma_xy = Lambda(lambda x: K.mean(x[0] * x[1], axis=(1, 2, 3)) - mu_x * mu_y, output_shape=(None,)) \
         ([(x_ref), (decoded_ref2ref)])
 
-    l = (2 * mu_x * mu_y + C1) / (K.square(mu_x) + K.square(mu_y) + C1)
-    cs = (2 * sigma_xy + C2) / (sigma_x2 + sigma_y2 + C2)
+    l_cs = (2 * mu_x * mu_y + C1) / (K.square(mu_x) + K.square(mu_y) + C1) * (2 * sigma_xy + C2) / (sigma_x2 + sigma_y2 + C2)
 
-    loss_ref2ref = 1 - K.mean(l * cs)
+    loss_ref2ref = K.mean(1 - l_cs) / 2
 
     return loss_ref2ref, loss_art2ref
 
-#def compute_MS_SSIM_loss(dHyper, x_ref, decoded_ref2ref, decoded_art2ref):
+# def compute_MSSIM_loss(dHyper, patchSize, x_ref, decoded_ref2ref, decoded_art2ref):
+#
+#     C1 = (255 * 0.01) ** 2
+#     C2 = (255 * 0.03) ** 2
+#
+#     sigma = 5
+#
+    ##initialize the gaussian filter based on the bottom size
+    # width = patchSize[0]-1
+    # num = x_ref._keras_shape[0]
+    # w = np.exp(-1. * np.arange(-(width / 2), width / 2 + 1) ** 2 / (2 * sigma ** 2))
+    # w = np.outer(w, w.reshape((patchSize[0], 1)))  # extend to 2D
+    # w = w / np.sum(w)  # normailization
+    # w = K.variable(value = w)
+    # w = K.reshape(w, (1, 1, patchSize[0], patchSize[0]))  # reshape to 4D
+    # w = K.tile(w, (1, 1, 1, 1))
+    #
+    #
+    # mu_x = Lambda(lambda x: K.sum(w * x, axis=(1,2,3)))(x_ref)
+    # sigma_x2 = Lambda(lambda x: K.sum(w * K.square(x), axis=(1,2,3)) - K.square(mu_x), output_shape=(None,))(x_ref)
+    #
+    ##art2ref
+    # mu_y = Lambda(lambda x: K.sum(w * x, axis=(1,2,3)), output_shape=(None,))(decoded_art2ref)
+    # sigma_y2 = Lambda(lambda x: K.sum(w * K.square(x), axis=(1, 2, 3)) - K.square(mu_x), output_shape=(None,))(decoded_art2ref)
+    # sigma_xy = Lambda(lambda x: K.sum(w * x[0] * x[1], axis=(1, 2, 3)) - mu_x * mu_y, output_shape=(None,)) \
+    #     ([(x_ref), (decoded_art2ref)])
+    #
+    # l = (2 * mu_x * mu_y + C1)/(K.square(mu_x) + K.square(mu_y)  + C1)
+    # cs = (2 * sigma_xy + C2) / (sigma_x2 + sigma_y2 + C2)
+    #
+    # loss_art2ref = (1 - K.mean(l * cs))/2
+    #
+    #
+    ## ref2ref
+    # mu_y = Lambda(lambda x: K.sum(w * x, axis=(1, 2, 3)), output_shape=(None,))(decoded_ref2ref)
+    # sigma_y2 = Lambda(lambda x: K.sum(w * K.square(x), axis=(1, 2, 3)) - K.square(mu_x), output_shape=(None,))(decoded_ref2ref)
+    # sigma_xy = Lambda(lambda x: K.sum(w * x[0] * x[1], axis=(1, 2, 3)) - mu_x * mu_y, output_shape=(None,)) \
+    #     ([(x_ref), (decoded_ref2ref)])
+    #
+    # l = (2 * mu_x * mu_y + C1) / (K.square(mu_x) + K.square(mu_y) + C1)
+    # cs = (2 * sigma_xy + C2) / (sigma_x2 + sigma_y2 + C2)
+    #
+    # loss_ref2ref = (1 - K.mean(l * cs))/2
+    #
+    # return loss_ref2ref, loss_art2ref
+
 
 def compute_charbonnier_loss(dHyper, x_ref, decoded_ref2ref, decoded_art2ref):
     epsilon = 0.1
