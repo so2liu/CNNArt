@@ -3,7 +3,7 @@
 """
 
 import numpy as np
-import dicom
+import pydicom
 import dicom_numpy
 import os
 import shelve
@@ -167,7 +167,7 @@ def create_DICOM_Array(PathDicom):
     file_list = os.listdir(PathDicom)
     for file in file_list:
         filenames_list.append(PathDicom + file)
-    datasets = [dicom.read_file(f) \
+    datasets = [pydicom.read_file(f) \
                 for f in filenames_list]
     try:
         voxel_ndarray, _ = dicom_numpy.combine_slices(datasets)

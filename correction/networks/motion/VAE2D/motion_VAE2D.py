@@ -21,9 +21,10 @@ from utils.MotionCorrection.plot import *
 
 
 class CustomLossLayer(Layer):
-    def __init__(self, dHyper, patchSize, **kwargs):
+    def __init__(self, dHyper, patchSize, dParam, **kwargs):
         self.dHyper = dHyper
         self.patchSize = patchSize
+        self.dParam = dParam
         super(CustomLossLayer, self).__init__(**kwargs)
 
     def call(self, inputs):
@@ -34,43 +35,48 @@ class CustomLossLayer(Layer):
         z_mean = inputs[4]
 
         # compute KL loss
-#        loss_kl = - 0.5 * K.sum(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=-1)
-#        self.add_loss(self.dHyper['kl_weight']*K.mean(loss_kl))
+        # loss_kl = - 0.5 * K.sum(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=-1)
+        # self.add_loss(self.dHyper['kl_weight']*K.mean(loss_kl))
 
         # compute MSE loss
-#        mse_loss_ref2ref, mse_loss_art2ref = compute_mse_loss(self.dHyper, x_ref, decoded_ref2ref, decoded_art2ref)
-#        self.add_loss(self.dHyper['mse_weight'] * (self.dHyper['loss_ref2ref']*mse_loss_ref2ref + self.dHyper['loss_art2ref']*mse_loss_art2ref))
+        # mse_loss_ref2ref, mse_loss_art2ref = compute_mse_loss(self.dHyper, x_ref, decoded_ref2ref, decoded_art2ref)
+        # self.add_loss(self.dHyper['mse_weight'] * (self.dHyper['loss_ref2ref']*mse_loss_ref2ref + self.dHyper['loss_art2ref']*mse_loss_art2ref))
 
         # compute L1 loss
-#        abs_loss_ref2ref, abs_loss_art2ref = compute_abs_loss(self.dHyper, x_ref, decoded_ref2ref, decoded_art2ref)
-#        self.add_loss(self.dHyper['abs_weight'] * (
-#        self.dHyper['loss_ref2ref'] * abs_loss_ref2ref + self.dHyper['loss_art2ref'] * abs_loss_art2ref))
+        # abs_loss_ref2ref, abs_loss_art2ref = compute_abs_loss(self.dHyper, x_ref, decoded_ref2ref, decoded_art2ref)
+        # self.add_loss(self.dHyper['abs_weight'] * (
+        # self.dHyper['loss_ref2ref'] * abs_loss_ref2ref + self.dHyper['loss_art2ref'] * abs_loss_art2ref))
 
         # compute MSSIM loss
-        MSSIM_loss_ref2ref, MSSIM_loss_art2ref = compute_MSSIM_loss(self.dHyper, x_ref, decoded_ref2ref, decoded_art2ref)
+        MSSIM_loss_ref2ref, MSSIM_loss_art2ref = compute_MSSIM_loss(self.dHyper, self.dParam, x_ref, decoded_ref2ref, decoded_art2ref)
         self.add_loss(self.dHyper['MSSIM_weight'] * (
         self.dHyper['loss_ref2ref'] * MSSIM_loss_ref2ref + self.dHyper['loss_art2ref'] * MSSIM_loss_art2ref))
 
+        # compute MS-SSIM loss
+        # MS_SSIM_loss_ref2ref, MS_SSIM_loss_art2ref = compute_MS_SSIM_loss(self.dHyper, self.dParam, x_ref, decoded_ref2ref,decoded_art2ref)
+        # self.add_loss(self.dHyper['MS_SSIM_weight'] * (
+        # self.dHyper['loss_ref2ref'] * MS_SSIM_loss_ref2ref + self.dHyper['loss_art2ref'] * MS_SSIM_loss_art2ref))
+
         # compute charbonnier loss
-#        charbonnier_loss_ref2ref, charbonnier_loss_art2ref = compute_charbonnier_loss(self.dHyper, x_ref, decoded_ref2ref, decoded_art2ref)
-#        self.add_loss(self.dHyper['charbonnier_weight'] * (self.dHyper['loss_ref2ref']*charbonnier_loss_ref2ref + self.dHyper['loss_art2ref']*charbonnier_loss_art2ref))
+        # charbonnier_loss_ref2ref, charbonnier_loss_art2ref = compute_charbonnier_loss(self.dHyper, x_ref, decoded_ref2ref, decoded_art2ref)
+        # self.add_loss(self.dHyper['charbonnier_weight'] * (self.dHyper['loss_ref2ref']*charbonnier_loss_ref2ref + self.dHyper['loss_art2ref']*charbonnier_loss_art2ref))
 
         # compute gradient entropy
-#        ge_ref2ref, ge_art2ref = compute_gradient_entropy(self.dHyper, decoded_ref2ref, decoded_art2ref, self.patchSize)
-#        self.add_loss(self.dHyper['ge_weight'] * (self.dHyper['loss_ref2ref']*ge_ref2ref + self.dHyper['loss_art2ref']*ge_art2ref))
+        # ge_ref2ref, ge_art2ref = compute_gradient_entropy(self.dHyper, decoded_ref2ref, decoded_art2ref, self.patchSize)
+        # self.add_loss(self.dHyper['ge_weight'] * (self.dHyper['loss_ref2ref']*ge_ref2ref + self.dHyper['loss_art2ref']*ge_art2ref))
 
         # compute TV loss
-#        tv_ref2ref, tv_art2ref = compute_tv_loss(self.dHyper, decoded_ref2ref, decoded_art2ref, self.patchSize)
-#        self.add_loss(self.dHyper['tv_weight'] * (self.dHyper['loss_ref2ref']*tv_ref2ref + self.dHyper['loss_art2ref']*tv_art2ref))
+       # tv_ref2ref, tv_art2ref = compute_tv_loss(self.dHyper, decoded_ref2ref, decoded_art2ref, self.patchSize)
+       # self.add_loss(self.dHyper['tv_weight'] * (self.dHyper['loss_ref2ref']*tv_ref2ref + self.dHyper['loss_art2ref']*tv_art2ref))
 
         # compute perceptual loss
-#        perceptual_loss_ref2ref, perceptual_loss_art2ref = compute_perceptual_loss(x_ref, decoded_ref2ref, decoded_art2ref, self.patchSize, self.dHyper['pl_network'],self.dHyper['loss_model'])
-#        self.add_loss(self.dHyper['perceptual_weight'] * (self.dHyper['loss_ref2ref'] * perceptual_loss_ref2ref + self.dHyper['loss_art2ref'] * perceptual_loss_art2ref))
+        # perceptual_loss_ref2ref, perceptual_loss_art2ref = compute_perceptual_loss(x_ref, decoded_ref2ref, decoded_art2ref, self.patchSize, self.dHyper['pl_network'],self.dHyper['loss_model'])
+        # self.add_loss(self.dHyper['perceptual_weight'] * (self.dHyper['loss_ref2ref'] * perceptual_loss_ref2ref + self.dHyper['loss_art2ref'] * perceptual_loss_art2ref))
 
         return [decoded_ref2ref, decoded_art2ref]
 
 
-def createModel(patchSize, dHyper):
+def createModel(patchSize, dHyper, dParam):
     # input corrupted and non-corrupted image
     x_ref = Input(shape=(1, patchSize[0], patchSize[1]))
     x_art = Input(shape=(1, patchSize[0], patchSize[1]))
@@ -93,7 +99,7 @@ def createModel(patchSize, dHyper):
     decoded_art2ref = Lambda(lambda input: input[input.shape[0]//2:, :, :, :], output_shape=(1, patchSize[0], patchSize[1]))(decoded)
 
     # input to CustomLoss Layer
-    [decoded_ref2ref, decoded_art2ref] = CustomLossLayer(dHyper, patchSize)([x_ref, decoded_ref2ref, decoded_art2ref, z_log_var, z_mean])
+    [decoded_ref2ref, decoded_art2ref] = CustomLossLayer(dHyper, patchSize, dParam)([x_ref, decoded_ref2ref, decoded_art2ref, z_log_var, z_mean])
 
     # generate the VAE and encoder model
     vae = Model([x_ref, x_art], [decoded_ref2ref, decoded_art2ref])
@@ -109,10 +115,10 @@ def fTrain(dData, dParam, dHyper):
 
     for iBatch in batchSize:
         for iLearn in learningRate:
-            fTrainInner(dData, dParam['sOutPath'], dParam['patchSize'], epochs, iBatch, iLearn, dHyper)
+            fTrainInner(dData, dParam['sOutPath'], dParam['patchSize'], epochs, iBatch, iLearn, dHyper, dParam)
 
 
-def fTrainInner(dData, sOutPath, patchSize, epochs, batchSize, lr, dHyper):
+def fTrainInner(dData, sOutPath, patchSize, epochs, batchSize, lr, dHyper, dParam):
     train_ref = dData['train_ref']
     train_art = dData['train_art']
     test_ref = dData['test_ref']
@@ -123,7 +129,7 @@ def fTrainInner(dData, sOutPath, patchSize, epochs, batchSize, lr, dHyper):
     test_ref = np.expand_dims(test_ref, axis=1)
     test_art = np.expand_dims(test_art, axis=1)
 
-    vae = createModel(patchSize, dHyper)
+    vae = createModel(patchSize, dHyper, dParam)
     vae.compile(optimizer=Adam(lr=lr, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0), loss=None)
     vae.summary()
 
@@ -194,7 +200,7 @@ def fPredict(test_ref, test_art, dParam, dHyper):
 
     patchSize = dParam['patchSize']
 
-    vae = createModel(patchSize, dHyper)
+    vae = createModel(patchSize, dHyper, dParam)
 
     vae.compile(optimizer='adam', loss=None)
 

@@ -176,7 +176,7 @@ def fRigidUnpatchingCorrection2D(actual_size, allPatches, patchOverlap, mode='ov
 
     num_rows = int(math.ceil((height_pad-patch_size[0])*1.0/dNotOverlap[0])+1)
     num_cols = int(math.ceil((width_pad-patch_size[1])*1.0/dNotOverlap[1])+1)
-    num_slices = allPatches.shape[0]/(num_rows * num_cols)
+    num_slices = allPatches.shape[0]//(num_rows * num_cols)
 
     allPatches = np.reshape(allPatches, (num_slices, -1, patch_size[0], patch_size[1]))
     unpatchImg = np.zeros((num_slices, height_pad, width_pad))
@@ -200,10 +200,10 @@ def fRigidUnpatchingCorrection2D(actual_size, allPatches, patchOverlap, mode='ov
 
         unpatchImg = np.divide(unpatchImg, dividor_grid)
 
-    unpatchImg_cropped = unpatchImg[:, (height_pad - height) / 2: height_pad - (height_pad - height) / 2,
-                         (width_pad - width) / 2: width_pad - (width_pad - width) / 2]
+    unpatchImg_cropped = unpatchImg[:, (height_pad - height) // 2: height_pad - (height_pad - height) // 2,
+                         (width_pad - width) // 2: width_pad - (width_pad - width) // 2]
 
-    unpatchImg_cropped = (unpatchImg_cropped + 1) * 255 / 2
+    unpatchImg_cropped = (unpatchImg_cropped + 1) * 255 // 2
     return unpatchImg_cropped
 
 

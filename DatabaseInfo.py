@@ -24,7 +24,7 @@ class DatabaseInfo:
         else:
             self.sSubDirs = sSubDirs
 
-        self.sPathIn = '/med_data/ImageSimilarity/Databases' + os.sep + self.sDatabase + os.sep + self.sSubDirs[0]
+        self.sPathIn = '/media/wzehui/Data/med_data/ImageSimilarity/Databases' + os.sep + self.sDatabase + os.sep + self.sSubDirs[0]
         # parse patients
         self.lPats = [name for name in os.listdir(self.sPathIn) if os.path.isdir(os.path.join(self.sPathIn, name))]
 
