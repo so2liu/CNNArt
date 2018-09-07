@@ -13,24 +13,30 @@ from utils.MotionCorrection.customLoss import *
 from utils.Unpatching import *
 from utils.MotionCorrection.plot import *
 
+from keras.preprocessing.image import ImageDataGenerator
+import scipy.io as sio
 
-def createModel(patchSize, dHyper):
+
+
+def createModel(patchSize, dHyper, dParam):
     # input corrupted and non-corrupted image
     x_ref = Input(shape=(1, patchSize[0], patchSize[1], patchSize[2]))
     x_art = Input(shape=(1, patchSize[0], patchSize[1], patchSize[2]))
 
     # create respective encoders
-    encoded_ref = encode(x_ref, patchSize)
-    encoded_art = encode(x_art, patchSize)
+    encoded_ref, conv_1_ref = encode(x_ref, patchSize)
+    encoded_art, conv_1_art = encode(x_art, patchSize)
+
+    conv_1 = concatenate([conv_1_ref, conv_1_art], axis=0)
 
     # concatenate the encoded features together
-    combined = concatenate([encoded_ref, encoded_art], axis=0)
+    conv_2 = concatenate([encoded_ref, encoded_art], axis=0)
 
     # create the shared encoder
-    z, z_mean, z_log_var = encode_shared(combined, patchSize)
+    z, z_mean, z_log_var, conv_3, conv_4 = encode_shared(conv_2, patchSize)
 
     # create the decoder
-    decoded = decode(z, patchSize, dHyper['dropout'])
+    decoded = decode(z, patchSize, conv_1, conv_2, conv_3, conv_4)
 
     # separate the concatenated images
     decoded_ref2ref = Lambda(lambda input: input[:input.shape[0]//2, :, :, :, :], output_shape=(1, patchSize[0], patchSize[1], patchSize[2]))(decoded)
@@ -44,12 +50,22 @@ def createModel(patchSize, dHyper):
     vae.add_loss(dHyper['kl_weight'] * K.mean(loss_kl))
 
     # compute pixel to pixel loss
-    loss_ref2ref, loss_art2ref = compute_mse_loss(dHyper, x_ref, decoded_ref2ref, decoded_art2ref)
-    vae.add_loss(dHyper['mse_weight'] * (dHyper['loss_ref2ref']*loss_ref2ref + dHyper['loss_art2ref']*loss_art2ref))
+    # loss_ref2ref, loss_art2ref = compute_mse_loss(dHyper, x_ref, decoded_ref2ref, decoded_art2ref)
+    # vae.add_loss(dHyper['mse_weight'] * (dHyper['loss_ref2ref']*loss_ref2ref + dHyper['loss_art2ref']*loss_art2ref))
 
     # add perceptual loss
     perceptual_loss_ref2ref, perceptual_loss_art2ref = compute_perceptual_loss(x_ref, decoded_ref2ref, decoded_art2ref, patchSize, dHyper['pl_network'], dHyper['loss_model'])
     vae.add_loss(dHyper['perceptual_weight'] * (dHyper['loss_ref2ref']*perceptual_loss_ref2ref + dHyper['loss_art2ref']*perceptual_loss_art2ref))
+
+    # compute L1 loss
+    abs_loss_ref2ref, abs_loss_art2ref = compute_abs_loss(dHyper, dParam, x_ref, decoded_ref2ref, decoded_art2ref)
+    vae.add_loss(dHyper['abs_weight'] * (
+            dHyper['loss_ref2ref'] * abs_loss_ref2ref + dHyper['loss_art2ref'] * abs_loss_art2ref))
+
+    # compute MS-SSIM loss
+    MS_SSIM_loss_ref2ref, MS_SSIM_loss_art2ref = compute_MS_SSIM_loss(dHyper, dParam, x_ref, decoded_ref2ref, decoded_art2ref)
+    vae.add_loss(dHyper['MS_SSIM_weight'] * (
+            dHyper['loss_ref2ref'] * MS_SSIM_loss_ref2ref + dHyper['loss_art2ref'] * MS_SSIM_loss_art2ref))
 
     return vae
 
@@ -61,9 +77,9 @@ def fTrain(dData, dParam, dHyper):
 
     for iBatch in batchSize:
         for iLearn in learningRate:
-            fTrainInner(dData, dParam['sOutPath'], dParam['patchSize'], epochs, iBatch, iLearn, dHyper)
+            fTrainInner(dData, dParam['sOutPath'], dParam['patchSize'], epochs, iBatch, iLearn, dHyper, dParam)
 
-def fTrainInner(dData, sOutPath, patchSize, epochs, batchSize, lr, dHyper):
+def fTrainInner(dData, sOutPath, patchSize, epochs, batchSize, lr, dHyper, dParam):
     train_ref = dData['train_ref']
     train_art = dData['train_art']
     test_ref = dData['test_ref']
@@ -74,45 +90,116 @@ def fTrainInner(dData, sOutPath, patchSize, epochs, batchSize, lr, dHyper):
     test_ref = np.expand_dims(test_ref, axis=1)
     test_art = np.expand_dims(test_art, axis=1)
 
-    vae = createModel(patchSize, dHyper)
+    vae = createModel(patchSize, dHyper, dParam)
     vae.compile(optimizer=Adam(lr=lr, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0), loss=None)
     vae.summary()
 
     print('Training with epochs {} batch size {} learning rate {}'.format(epochs, batchSize, lr))
 
-    weights_file = sOutPath + os.sep + 'vae_weight_ps_{}_bs_{}_lr_{}_{}.h5'.format(patchSize[0], batchSize, lr, dHyper['test_patient'])
-    lossPlot_file = weights_file[:-3] + '.png'
+    def gen_flow_for_two_inputs(x1, x2):
+        seed = np.random.randint(0, 1e3)
+        genx1 = datagen.flow(x1, batch_size=batchSize, seed=seed)
+        genx2 = datagen.flow(x2, batch_size=batchSize, seed=seed)
+        while True:
+            X1i = genx1.next()
+            X2i = genx2.next()
+            yield [X1i, X2i], None
 
-    plotLoss = PlotLosses(lossPlot_file)
+    if dHyper['augmentation']:
+        weights_file = sOutPath + os.sep + 'vae_weight_ps_{}_bs_{}_lr_{}_{}_augmentation.h5'.format(patchSize[0], batchSize, lr, dHyper['test_patient'])
 
-    callback_list = []
-    # callback_list = [EarlyStopping(monitor='val_loss', patience=5, verbose=1)]
-    callback_list.append(ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=1, min_lr=0, verbose=1))
-    callback_list.append(ModelCheckpoint(weights_file, monitor='val_loss', verbose=1, period=1, save_best_only=True, save_weights_only=True))
-    callback_list.append(plotLoss)
+        lossPlot_file = weights_file[:-3] + '.png'
+        plotLoss = PlotLosses(lossPlot_file)
+        callback_list = [EarlyStopping(monitor='val_loss', patience=10, verbose=1)]
+        callback_list.append(ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, min_lr=0, verbose=1))
+        callback_list.append(ModelCheckpoint(weights_file, monitor='val_loss', verbose=1, period=1, save_best_only=True, save_weights_only=True))
+        callback_list.append(plotLoss)
+        datagen = ImageDataGenerator(rotation_range=10,
+                                     vertical_flip=True,
+                                     horizontal_flip=True,
+                                     zoom_range=0.2)
+        gen_flow = gen_flow_for_two_inputs(train_ref, train_art)
 
-    history = vae.fit([train_ref, train_art],
-            shuffle=True,
-            epochs=epochs,
-            batch_size=batchSize,
-            validation_data=([test_ref, test_art], None),
-            verbose=1,
-            callbacks=callback_list)
+        vae.fit_generator(gen_flow,
+                          shuffle=True,
+                          steps_per_epoch=len(train_ref)//batchSize,
+                          epochs=epochs,
+                          validation_data=([test_ref, test_art], None),
+                          verbose=1,
+                          callbacks=callback_list)
+    else:
+        weights_file = sOutPath + os.sep + 'vae_weight_ps_{}_bs_{}_lr_{}_{}.h5'.format(patchSize[0], batchSize, lr, dHyper['test_patient'])
+        # vae.load_weights(weights_file)
 
-    plt.plot(history.history['loss'])
-    plt.plot(history.history['val_loss'])
-    plt.title('model loss')
-    plt.ylabel('loss')
-    plt.xlabel('epoch')
-    plt.legend(['train', 'test'], loc='upper left')
-    plt.savefig(weights_file[:-3] + '.png')
+        lossPlot_file = weights_file[:-3] + '.png'
+        plotLoss = PlotLosses(lossPlot_file)
+        callback_list = [EarlyStopping(monitor='val_loss', patience=10, verbose=1)]
+        callback_list.append(ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, min_lr=0, verbose=1))
+        callback_list.append(ModelCheckpoint(weights_file, monitor='val_loss', verbose=1, period=1, save_best_only=True, save_weights_only=True))
+        callback_list.append(plotLoss)
+
+        # train original dataset
+        result = vae.fit([train_ref, train_art],
+                shuffle=True,
+                epochs=epochs,
+                batch_size=batchSize,
+                validation_data=([test_ref, test_art], None),
+                verbose=1,
+                callbacks=callback_list)
+        # matlab
+        loss = result.history['loss']
+        val_loss = result.history['val_loss']
+
+        print('Saving results...')
+        sio.savemat(weights_file[:-3], {'loss': loss, 'val_loss': val_loss})
+
+    # weights_file = sOutPath + os.sep + 'vae_weight_ps_{}_bs_{}_lr_{}_{}.h5'.format(patchSize[0], batchSize, lr, dHyper['test_patient'])
+    # lossPlot_file = weights_file[:-3] + '.png'
+    #
+    # plotLoss = PlotLosses(lossPlot_file)
+    #
+    # callback_list = []
+    ## callback_list = [EarlyStopping(monitor='val_loss', patience=5, verbose=1)]
+    # callback_list.append(ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=1, min_lr=0, verbose=1))
+    # callback_list.append(ModelCheckpoint(weights_file, monitor='val_loss', verbose=1, period=1, save_best_only=True, save_weights_only=True))
+    # callback_list.append(plotLoss)
+    #
+    # datagen = ImageDataGenerator(rotation_range=10,
+    #                              vertical_flip=True,
+    #                              horizontal_flip=True,
+    #                              zoom_range=0.2)
+    # gen_flow = gen_flow_for_two_inputs(train_ref, train_art)
+    #
+    # history = vae.fit_generator(gen_flow,
+    #                   shuffle=True,
+    #                   steps_per_epoch=len(train_ref) // batchSize,
+    #                   epochs=epochs,
+    #                   validation_data=([test_ref, test_art], None),
+    #                   verbose=1,
+    #                   callbacks=callback_list)
+    #
+    # history = vae.fit([train_ref, train_art],
+    #         shuffle=True,
+    #         epochs=epochs,
+    #         batch_size=batchSize,
+    #         validation_data=([test_ref, test_art], None),
+    #         verbose=1,
+    #         callbacks=callback_list)
+
+    # plt.plot(history.history['loss'])
+    # plt.plot(history.history['val_loss'])
+    # plt.title('model loss')
+    # plt.ylabel('loss')
+    # plt.xlabel('epoch')
+    # plt.legend(['train', 'test'], loc='upper left')
+    # plt.savefig(weights_file[:-3] + '.png')
 
 def fPredict(test_ref, test_art, dParam, dHyper):
     weights_file = dParam['sOutPath'] + os.sep + '{}.h5'.format(dHyper['bestModel'])
 
     patchSize = dParam['patchSize']
 
-    vae = createModel(patchSize, dHyper)
+    vae = createModel(patchSize, dHyper, dParam)
     vae.compile(optimizer='adam', loss=None)
 
     vae.load_weights(weights_file)

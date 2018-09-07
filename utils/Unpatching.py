@@ -250,11 +250,11 @@ def fRigidUnpatchingCorrection3D(actual_size, allPatches, patchOverlap, mode='ov
 
         unpatchImg = np.divide(unpatchImg, dividor_grid)
 
-    unpatchImg_cropped = unpatchImg[(depth_pad - depth)/2:depth_pad - (depth_pad - depth)/2,
-                         (height_pad - height) / 2: height_pad - (height_pad - height) / 2,
-                         (width_pad - width) / 2: width_pad - (width_pad - width) / 2]
+    unpatchImg_cropped = unpatchImg[(depth_pad - depth) // 2: depth_pad - (depth_pad - depth) // 2,
+                         (height_pad - height) // 2: height_pad - (height_pad - height) // 2,
+                         (width_pad - width) // 2: width_pad - (width_pad - width) // 2]
 
-    unpatchImg_cropped = (unpatchImg_cropped - np.min(unpatchImg_cropped)) * 2094 / (np.max(unpatchImg_cropped) - np.min(unpatchImg_cropped))
+    unpatchImg_cropped = (unpatchImg_cropped - np.min(unpatchImg_cropped)) * 2094 // (np.max(unpatchImg_cropped) - np.min(unpatchImg_cropped))
     return unpatchImg_cropped
 
 def fPatchToImage(actual_size, allPatches, patchOverlap):

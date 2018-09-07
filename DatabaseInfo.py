@@ -20,7 +20,7 @@ class DatabaseInfo:
             self.sDatabase = sDatabase
 
         if sSubDirs is None:
-            self.sSubDirs = ['newProtocol','dicom_sorted','testout'] # name of subdirectory in [database, patient]
+            self.sSubDirs = ['newProtocol','dicom_sorted','testout', 'NAKO_IQA'] # name of subdirectory in [database, patient]
         else:
             self.sSubDirs = sSubDirs
 
