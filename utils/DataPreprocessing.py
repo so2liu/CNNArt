@@ -3,7 +3,7 @@
 """
 
 import numpy as np
-import dicom
+import pydicom
 import dicom_numpy
 import os
 import shelve
